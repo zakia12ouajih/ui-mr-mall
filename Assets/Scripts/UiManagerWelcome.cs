@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class UIManager : MonoBehaviour
+public class UIManagerWelcome : MonoBehaviour
 {
     public GameObject panelWelcome;
     public GameObject panelLogin;
