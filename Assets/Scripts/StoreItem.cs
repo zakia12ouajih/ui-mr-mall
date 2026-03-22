@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
-using System.Collections.Generic;
 
 [System.Serializable]
 public class StoreData
@@ -15,12 +15,12 @@ public class StoreData
 
 public class StoreItem : MonoBehaviour
 {
-    [Header("Prefab & Parent")]
+    [Header("UI References")]
     public GameObject cardPrefab;
     public Transform contentParent;
-
-    [Header("Dropdown")]
-    public TMP_Dropdown floorDropdown; // Dropdown to select floor
+    public TMP_Dropdown floorDropdown;
+    public GameObject scrollView;
+    public GameObject categoryButtons;
 
     [Header("Grid Settings")]
     public int columns = 3;
@@ -36,14 +36,26 @@ public class StoreItem : MonoBehaviour
     [Header("Mock Logos")]
     public List<Sprite> logos;
 
-    private List<StoreData> mockStores;
     private GridLayoutGroup grid;
+    private List<StoreData> mockStores;
 
     void Start()
     {
         CreateMockStores();
         SetupContentParent();
-        ShowSelectedFloor(); // default floor at start
+        SetupDropdown();
+
+        // Default: show categories
+        ShowSelectedFloor();
+    }
+
+    void SetupDropdown()
+    {
+        floorDropdown.ClearOptions();
+        List<string> options = new List<string> { "Show Categories", "Floor 1", "Floor 2", "Floor 3" };
+        floorDropdown.AddOptions(options);
+
+        // floorDropdown.onValueChanged.AddListener(delegate { ShowSelectedFloor(); });
     }
 
     void SetupContentParent()
@@ -53,8 +65,6 @@ public class StoreItem : MonoBehaviour
             Debug.LogError("Content Parent not assigned!");
             return;
         }
-
-        RectTransform contentRect = contentParent.GetComponent<RectTransform>();
 
         grid = contentParent.GetComponent<GridLayoutGroup>();
         if (grid == null) grid = contentParent.gameObject.AddComponent<GridLayoutGroup>();
@@ -68,31 +78,14 @@ public class StoreItem : MonoBehaviour
         grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
         grid.constraintCount = columns;
 
-        // Ensure viewport width can fit all columns
+        // Ensure content width fits all columns
         float minWidth = (cardSize.x * columns) + (cardSpacing.x * (columns - 1)) + leftPadding + rightPadding;
-        contentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, minWidth);
+        contentParent.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, minWidth);
 
-        // Content Size Fitter
         ContentSizeFitter fitter = contentParent.GetComponent<ContentSizeFitter>();
         if (fitter == null) fitter = contentParent.gameObject.AddComponent<ContentSizeFitter>();
-
         fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        // ScrollRect setup
-        ScrollRect scrollRect = GetComponentInParent<ScrollRect>();
-        if (scrollRect != null)
-        {
-            scrollRect.content = contentRect;
-            scrollRect.horizontal = false;
-            scrollRect.vertical = true;
-
-            // Ensure viewport has a RectMask2D for clipping
-            RectMask2D mask = scrollRect.viewport.GetComponent<RectMask2D>();
-            if (mask == null) scrollRect.viewport.gameObject.AddComponent<RectMask2D>();
-        }
-
-        LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
     }
 
     void CreateMockStores()
@@ -114,35 +107,37 @@ public class StoreItem : MonoBehaviour
 
     public void ShowSelectedFloor()
     {
-        if (floorDropdown == null)
+        int index = floorDropdown.value;
+
+        // Show categories if first option is selected
+        if (index == 0)
         {
-            Debug.LogWarning("Dropdown not assigned, defaulting to floor 1");
-            SpawnStores(1);
+            scrollView.SetActive(false);
+            categoryButtons.SetActive(true);
             return;
         }
 
-        int floor = floorDropdown.value + 1; // Dropdown index starts at 0
-        SpawnStores(floor);
+        int selectedFloor = index; // floor 1 = index 1, etc.
+        scrollView.SetActive(true);
+        categoryButtons.SetActive(false);
+        SpawnStores(selectedFloor);
     }
 
-    void SpawnStores(int selectedFloor)
+    void SpawnStores(int floor)
     {
-        if (contentParent == null) return;
-
-        // Clear existing
+        // Clear existing cards
         for (int i = contentParent.childCount - 1; i >= 0; i--)
             Destroy(contentParent.GetChild(i).gameObject);
 
-        // Spawn stores for selected floor
         foreach (var store in mockStores)
         {
-            if (store.floor != selectedFloor) continue;
+            if (store.floor != floor) continue;
 
             GameObject card = Instantiate(cardPrefab, contentParent);
 
-            SetTextComponent(card, "StoreName", store.storeName);
-            SetTextComponent(card, "CategoryBadge", store.category);
-            SetTextComponent(card, "Tagline", store.tagline);
+            SetText(card, "StoreName", store.storeName);
+            SetText(card, "CategoryBadge", store.category);
+            SetText(card, "Tagline", store.tagline);
 
             if (store.logo != null)
             {
@@ -154,7 +149,7 @@ public class StoreItem : MonoBehaviour
         ForceLayoutUpdate();
     }
 
-    void SetTextComponent(GameObject card, string name, string text)
+    void SetText(GameObject card, string name, string text)
     {
         var tmp = card.transform.Find(name)?.GetComponent<TextMeshProUGUI>();
         if (tmp != null) tmp.text = text;
@@ -166,5 +161,10 @@ public class StoreItem : MonoBehaviour
 
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent.GetComponent<RectTransform>());
+    }
+    
+    public void OnGoButtonClicked()
+    {
+        ShowSelectedFloor();
     }
 }
