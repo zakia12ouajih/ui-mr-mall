@@ -1734,6 +1734,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 861068378}
   m_CullTransparentMesh: 1
+--- !u!114 &888426279 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8848385045924867064, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+  m_PrefabInstance: {fileID: 8576631077857780327}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b743370ac3e4ec2a1668f5455a8ef8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &903702908
 GameObject:
   m_ObjectHideFlags: 0
@@ -3152,7 +3163,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardPrefab: {fileID: 5001725919493403493, guid: ff95bf5f853ebb24691f71c587aca21d, type: 3}
   contentParent: {fileID: 505752566}
-  logos: []
+  floorDropdown: {fileID: 888426279}
   columns: 3
   cardSize: {x: 200, y: 200}
   cardSpacing: {x: 100, y: 20}
@@ -3160,6 +3171,7 @@ MonoBehaviour:
   rightPadding: 50
   topPadding: 10
   bottomPadding: 10
+  logos: []
 --- !u!1 &1745738017
 GameObject:
   m_ObjectHideFlags: 0
@@ -4593,6 +4605,34 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 1712312647}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1712312648}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: ShowSelectedFloor
+      objectReference: {fileID: 0}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: StoreItem, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 3195388572510468473, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 8499411505611761592, guid: 95cd55aa09c58d343ba30422fcef43b1, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
