@@ -20,7 +20,11 @@ public class StoreItem : MonoBehaviour
     public Transform contentParent;
     public TMP_Dropdown floorDropdown;
     public GameObject scrollView;
-    public GameObject categoryButtons;
+    // public GameObject categoryButtons;
+
+    [Header("Category Prefab")]
+    public GameObject categoryPrefab;     // prefab for each category
+    public Transform categoryParent;      // where category cards will be spawned
 
     [Header("Grid Settings")]
     public int columns = 3;
@@ -47,6 +51,85 @@ public class StoreItem : MonoBehaviour
 
         // Default: show categories
         ShowSelectedFloor();
+    }
+
+    private List<string> categories = new List<string>
+    {
+        "Makeup", "Home Decor", "Jewelry", "Sports", "Fashion", "Electronics"
+    };
+    void ShowCategories()
+    {
+        // Clear existing category cards
+        for (int i = categoryParent.childCount - 1; i >= 0; i--)
+            Destroy(categoryParent.GetChild(i).gameObject);
+
+        foreach (var category in categories)
+        {
+            GameObject card = Instantiate(categoryPrefab, categoryParent);
+            SetText(card, "CategoryName", category);
+            SetText(card, "CategoryPreview", GetCategoryPreview(category));
+
+            // Optional: add button listener to filter stores
+            Button btn = card.GetComponent<Button>();
+            if (btn != null)
+            {
+                string capturedCategory = category; // capture local variable
+                btn.onClick.AddListener(() => ShowStoresByCategory(capturedCategory));
+            }
+        }
+        
+        // categoryButtons.SetActive(true);
+        scrollView.SetActive(false);
+    }
+    string GetCategoryPreview(string category)
+    {
+        List<string> names = new List<string>();
+        foreach (var store in mockStores)
+        {
+            if (store.category == category)
+                names.Add(store.storeName);
+        }
+
+        if (names.Count == 0) return "";
+
+        int previewCount = Mathf.Min(2, names.Count);
+        string preview = string.Join(" • ", names.GetRange(0, previewCount));
+
+        if (names.Count > previewCount)
+            preview += "\n+" + (names.Count - previewCount) + " more";
+
+        return preview;
+    }
+    public void ShowStoresByCategory(string category)
+    {
+        // Clear categories panel
+        for (int i = categoryParent.childCount - 1; i >= 0; i--)
+            Destroy(categoryParent.GetChild(i).gameObject);
+
+        // categoryButtons.SetActive(false);
+        scrollView.SetActive(true);
+
+        // Filter and spawn stores of selected category
+        for (int i = contentParent.childCount - 1; i >= 0; i--)
+            Destroy(contentParent.GetChild(i).gameObject);
+
+        foreach (var store in mockStores)
+        {
+            if (store.category != category) continue;
+
+            GameObject card = Instantiate(cardPrefab, contentParent);
+            SetText(card, "StoreName", store.storeName);
+            SetText(card, "CategoryBadge", store.category);
+            SetText(card, "Tagline", store.tagline);
+
+            if (store.logo != null)
+            {
+                Image logoImage = card.transform.Find("Logo")?.GetComponent<Image>();
+                if (logoImage != null) logoImage.sprite = store.logo;
+            }
+        }
+
+        ForceLayoutUpdate();
     }
 
     void SetupDropdown()
@@ -93,15 +176,21 @@ public class StoreItem : MonoBehaviour
         mockStores = new List<StoreData>
         {
             new StoreData{ storeName="NovaTech Hub", category="Electronics", tagline="Next-gen gadgets", floor=1 },
-            new StoreData{ storeName="Aura Fashion", category="Clothing", tagline="Style that moves", floor=1 },
-            new StoreData{ storeName="PixelPlay", category="Gaming", tagline="Level up", floor=2 },
-            new StoreData{ storeName="HomeScape", category="Home & Decor", tagline="Perfect space", floor=2 },
-            new StoreData{ storeName="GlowUp Beauty", category="Beauty & Skincare", tagline="Feel good", floor=3 },
-            new StoreData{ storeName="FitZone Pro", category="Fitness", tagline="Train smarter", floor=3 },
-            new StoreData{ storeName="QuickBite", category="Food & Snacks", tagline="Instant cravings", floor=1 },
-            new StoreData{ storeName="ReadSphere", category="Books", tagline="A universe of stories", floor=2 },
-            new StoreData{ storeName="SoundWave", category="Music & Audio", tagline="Hear every detail", floor=3 },
-            new StoreData{ storeName="KiddoLand", category="Toys & Kids", tagline="Where fun begins", floor=1 }
+            new StoreData{ storeName="Aura Fashion", category="Fashion", tagline="Style that moves", floor=1 },
+            new StoreData{ storeName="GlowUp Beauty", category="Makeup", tagline="Feel good", floor=1 },
+            new StoreData{ storeName="FitZone Pro", category="Sports", tagline="Train smarter", floor=1 },
+
+            // FLOOR 2
+            new StoreData{ storeName="PixelPlay", category="Electronics", tagline="Level up gaming", floor=2 },
+            new StoreData{ storeName="HomeScape", category="Home Decor", tagline="Perfect space", floor=2 },
+            new StoreData{ storeName="Elegance Gems", category="Jewelry", tagline="Shine bright", floor=2 },
+            new StoreData{ storeName="Urban Wear", category="Fashion", tagline="Street style", floor=2 },
+
+            // FLOOR 3
+            new StoreData{ storeName="SoundWave", category="Electronics", tagline="Hear every detail", floor=3 },
+            new StoreData{ storeName="DecoDream", category="Home Decor", tagline="Design your vibe", floor=3 },
+            new StoreData{ storeName="GoldNest", category="Jewelry", tagline="Luxury pieces", floor=3 },
+            new StoreData{ storeName="ActiveLife", category="Sports", tagline="Stay active", floor=3 }
         };
     }
 
@@ -109,18 +198,18 @@ public class StoreItem : MonoBehaviour
     {
         int index = floorDropdown.value;
 
-        // Show categories if first option is selected
         if (index == 0)
         {
-            scrollView.SetActive(false);
-            categoryButtons.SetActive(true);
+            ShowCategories();
             return;
         }
 
-        int selectedFloor = index; // floor 1 = index 1, etc.
+        // Clear categories when showing a floor
+        for (int i = categoryParent.childCount - 1; i >= 0; i--)
+            Destroy(categoryParent.GetChild(i).gameObject);
+
         scrollView.SetActive(true);
-        categoryButtons.SetActive(false);
-        SpawnStores(selectedFloor);
+        SpawnStores(index); // floor 1 = index 1, etc.
     }
 
     void SpawnStores(int floor)
