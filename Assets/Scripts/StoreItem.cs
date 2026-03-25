@@ -16,26 +16,19 @@ public class StoreData
 public class StoreItem : MonoBehaviour
 {
     [Header("UI References")]
-    public GameObject cardPrefab;
+    public GameObject cardPrefabStore;
     public Transform contentParent;
     public TMP_Dropdown floorDropdown;
-    public GameObject scrollView;
+    public GameObject scrollViewStores;
     // public GameObject categoryButtons;
 
     [Header("Category Prefab")]
+    // public GameObject categoryPrefab;
     public GameObject categoryPrefab;     // prefab for each category
-    public Transform categoryParent;      // where category cards will be spawned
+    public Transform contentCategoryParent; 
+    public GameObject scrollViewCategory;     
 
-    [Header("Grid Settings")]
-    public int columns = 3;
-    public Vector2 cardSize = new Vector2(200, 200);
-    public Vector2 cardSpacing = new Vector2(50, 20);
-
-    [Header("Padding")]
-    public int leftPadding = 50;
-    public int rightPadding = 50;
-    public int topPadding = 20;
-    public int bottomPadding = 10;
+    
 
     [Header("Mock Logos")]
     public List<Sprite> logos;
@@ -46,7 +39,7 @@ public class StoreItem : MonoBehaviour
     void Start()
     {
         CreateMockStores();
-        SetupContentParent();
+        // SetupContentParent();
         SetupDropdown();
 
         // Default: show categories
@@ -60,30 +53,30 @@ public class StoreItem : MonoBehaviour
     void ShowCategories()
     {
         // Clear existing category cards
-        for (int i = categoryParent.childCount - 1; i >= 0; i--)
-            Destroy(categoryParent.GetChild(i).gameObject);
+        for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+            Destroy(contentCategoryParent.GetChild(i).gameObject);
 
         foreach (var category in categories)
         {
-            GameObject card = Instantiate(categoryPrefab, categoryParent);
+            GameObject card = Instantiate(categoryPrefab, contentCategoryParent);
+
             SetText(card, "CategoryName", category);
             SetText(card, "CategoryPreview", GetCategoryPreview(category));
 
-            // Optional: add button listener to filter stores
             Button btn = card.GetComponent<Button>();
             if (btn != null)
             {
-                string capturedCategory = category; // capture local variable
+                string capturedCategory = category;
                 btn.onClick.AddListener(() => ShowStoresByCategory(capturedCategory));
             }
         }
-        
-        // categoryButtons.SetActive(true);
-        scrollView.SetActive(false);
+        scrollViewCategory.SetActive(true);
+        scrollViewStores.SetActive(false); // hide stores
     }
     string GetCategoryPreview(string category)
     {
         List<string> names = new List<string>();
+
         foreach (var store in mockStores)
         {
             if (store.category == category)
@@ -92,22 +85,31 @@ public class StoreItem : MonoBehaviour
 
         if (names.Count == 0) return "";
 
-        int previewCount = Mathf.Min(2, names.Count);
-        string preview = string.Join(" • ", names.GetRange(0, previewCount));
+        // Case 1: only 1 store
+        if (names.Count == 1)
+            return names[0];
 
-        if (names.Count > previewCount)
-            preview += "\n+" + (names.Count - previewCount) + " more";
+        // Case 2: 2 or more stores
+        string line1 = names[0];
+        string line2 = names[1];
 
-        return preview;
+        if (names.Count > 2)
+        {
+            int remaining = names.Count - 2;
+            line2 += " +" + remaining;
+        }
+
+        return line1 + "\n" + line2;
     }
     public void ShowStoresByCategory(string category)
     {
         // Clear categories panel
-        for (int i = categoryParent.childCount - 1; i >= 0; i--)
-            Destroy(categoryParent.GetChild(i).gameObject);
+        for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+            Destroy(contentCategoryParent.GetChild(i).gameObject);
 
         // categoryButtons.SetActive(false);
-        scrollView.SetActive(true);
+        scrollViewCategory.SetActive(false);
+        scrollViewStores.SetActive(true);
 
         // Filter and spawn stores of selected category
         for (int i = contentParent.childCount - 1; i >= 0; i--)
@@ -117,10 +119,10 @@ public class StoreItem : MonoBehaviour
         {
             if (store.category != category) continue;
 
-            GameObject card = Instantiate(cardPrefab, contentParent);
-            SetText(card, "StoreName", store.storeName);
-            SetText(card, "CategoryBadge", store.category);
-            SetText(card, "Tagline", store.tagline);
+            GameObject card = Instantiate(cardPrefabStore, contentParent);
+            SetText(card, "verticalText/StoreName", store.storeName);
+            SetText(card, "verticalText/CategoryBadge", store.category);
+            SetText(card, "verticalText/Tagline", store.tagline);
 
             if (store.logo != null)
             {
@@ -129,7 +131,7 @@ public class StoreItem : MonoBehaviour
             }
         }
 
-        ForceLayoutUpdate();
+        // ForceLayoutUpdate();
     }
 
     void SetupDropdown()
@@ -152,24 +154,13 @@ public class StoreItem : MonoBehaviour
         grid = contentParent.GetComponent<GridLayoutGroup>();
         if (grid == null) grid = contentParent.gameObject.AddComponent<GridLayoutGroup>();
 
-        grid.cellSize = cardSize;
-        grid.spacing = cardSpacing;
-        grid.padding = new RectOffset(leftPadding, rightPadding, topPadding, bottomPadding);
         grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
         grid.startAxis = GridLayoutGroup.Axis.Horizontal;
         grid.childAlignment = TextAnchor.UpperLeft;
-        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        grid.constraintCount = columns;
 
         // Ensure content width fits all columns
-        float minWidth = (cardSize.x * columns) + (cardSpacing.x * (columns - 1)) + leftPadding + rightPadding;
-        contentParent.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, minWidth);
 
-        ContentSizeFitter fitter = contentParent.GetComponent<ContentSizeFitter>();
-        if (fitter == null) fitter = contentParent.gameObject.AddComponent<ContentSizeFitter>();
-        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-    }
+        }
 
     void CreateMockStores()
     {
@@ -205,10 +196,10 @@ public class StoreItem : MonoBehaviour
         }
 
         // Clear categories when showing a floor
-        for (int i = categoryParent.childCount - 1; i >= 0; i--)
-            Destroy(categoryParent.GetChild(i).gameObject);
-
-        scrollView.SetActive(true);
+        for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+            Destroy(contentCategoryParent.GetChild(i).gameObject);
+        scrollViewCategory.SetActive(false);
+        scrollViewStores.SetActive(true);
         SpawnStores(index); // floor 1 = index 1, etc.
     }
 
@@ -222,11 +213,11 @@ public class StoreItem : MonoBehaviour
         {
             if (store.floor != floor) continue;
 
-            GameObject card = Instantiate(cardPrefab, contentParent);
+            GameObject card = Instantiate(cardPrefabStore, contentParent);
 
-            SetText(card, "StoreName", store.storeName);
-            SetText(card, "CategoryBadge", store.category);
-            SetText(card, "Tagline", store.tagline);
+            SetText(card, "verticalText/StoreName", store.storeName);
+            SetText(card, "verticalText/CategoryBadge", store.category);
+            SetText(card, "verticalText/Tagline", store.tagline);
 
             if (store.logo != null)
             {
@@ -235,7 +226,7 @@ public class StoreItem : MonoBehaviour
             }
         }
 
-        ForceLayoutUpdate();
+        // ForceLayoutUpdate();
     }
 
     void SetText(GameObject card, string name, string text)
@@ -244,13 +235,13 @@ public class StoreItem : MonoBehaviour
         if (tmp != null) tmp.text = text;
     }
 
-    void ForceLayoutUpdate()
-    {
-        if (contentParent == null) return;
+    // void ForceLayoutUpdate()
+    // {
+    //     if (contentParent == null) return;
 
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent.GetComponent<RectTransform>());
-    }
+    //     Canvas.ForceUpdateCanvases();
+    //     LayoutRebuilder.ForceRebuildLayoutImmediate(contentParent.GetComponent<RectTransform>());
+    // }
     
     public void OnGoButtonClicked()
     {
