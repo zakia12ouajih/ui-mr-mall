@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Linq;
 
 [System.Serializable]
 public class StoreData
@@ -11,6 +12,7 @@ public class StoreData
     public string tagline;
     public Sprite logo;
     public int floor; // 1, 2, 3...
+    public List<string> products; // new field
 }
 
 public class StoreItem : MonoBehaviour
@@ -21,7 +23,8 @@ public class StoreItem : MonoBehaviour
         Welcome,
         Categories,
         FloorView,
-        CategoryStores
+        CategoryStores,
+        SearchResults // Add new state for search results
     }
 
     AppState currentState;
@@ -31,7 +34,12 @@ public class StoreItem : MonoBehaviour
     public Transform contentParent;
     public TMP_Dropdown floorDropdown;
     public GameObject scrollViewStores;
-    public Button goButton; // Add reference to Go button
+    public Button goButton; // Reference to Go button
+    
+    [Header("Search UI")]
+    public TMP_InputField searchInput;
+    public Button searchButton; // Add reference to search button
+    // public Button clearSearchButton; // Optional: add clear button
 
     [Header("Category Prefab")]
     public GameObject categoryPrefab;     // prefab for each category
@@ -46,6 +54,7 @@ public class StoreItem : MonoBehaviour
     
     // Store currently selected category to maintain state
     private string currentCategory;
+    private string lastSearchQuery; // Store last search query
 
     void Start()
     {
@@ -63,6 +72,31 @@ public class StoreItem : MonoBehaviour
             Debug.LogWarning("Go Button not assigned in inspector!");
         }
         
+        // Setup Search button
+        if (searchButton != null)
+        {
+            searchButton.onClick.RemoveAllListeners();
+            searchButton.onClick.AddListener(OnSearchButtonClicked);
+        }
+        else
+        {
+            Debug.LogWarning("Search Button not assigned in inspector!");
+        }
+        
+        // Optional: Setup clear search button
+        // if (clearSearchButton != null)
+        // {
+        //     clearSearchButton.onClick.RemoveAllListeners();
+        //     clearSearchButton.onClick.AddListener(ClearSearch);
+        // }
+        
+        // Setup search input to listen for Enter key
+        if (searchInput != null)
+        {
+            searchInput.onSubmit.AddListener((value) => OnSearchButtonClicked());
+            searchInput.onValueChanged.AddListener(OnSearchInputChanged); // Optional: live search
+        }
+        
         // Default: show categories
         ShowCategories();
     }
@@ -71,6 +105,16 @@ public class StoreItem : MonoBehaviour
     private List<string> categories = new List<string>
     {
         "Makeup", "Home Decor", "Jewelry", "Sports", "Fashion", "Electronics"
+    };
+    
+    Dictionary<string, List<string>> categoryProducts = new Dictionary<string, List<string>>
+    {
+        { "Makeup", new List<string> { "Lipstick", "Foundation", "Blush", "Mascara", "Eyeshadow", "Highlighter", "Concealer", "Lip Gloss", "Primer", "Setting Spray" } },
+        { "Home Decor", new List<string> { "Cushion", "Vase", "Lamp", "Rug", "Curtains", "Wall Art", "Table", "Chair", "Mirror", "Candles" } },
+        { "Jewelry", new List<string> { "Necklace", "Ring", "Bracelet", "Earrings", "Brooch", "Pendant", "Anklet", "Cufflinks", "Watch", "Charm" } },
+        { "Sports", new List<string> { "Yoga Mat", "Dumbbells", "Treadmill", "Basketball", "Soccer Ball", "Tennis Racket", "Fitness Tracker", "Water Bottle", "Gloves", "Shoes" } },
+        { "Fashion", new List<string> { "T-Shirt", "Jeans", "Jacket", "Sneakers", "Dress", "Hat", "Scarf", "Bag", "Sunglasses", "Belt" } },
+        { "Electronics", new List<string> { "Smartphone", "Laptop", "Headphones", "Smartwatch", "Camera", "Tablet", "Speaker", "VR Headset", "Drone", "Charger" } }
     };
     
     void ShowCategories()
@@ -111,6 +155,12 @@ public class StoreItem : MonoBehaviour
         scrollViewCategory.SetActive(true);
         scrollViewStores.SetActive(false); // hide stores
         currentState = AppState.Categories;
+        
+        // Clear search input if needed
+        // if (searchInput != null && !string.IsNullOrEmpty(searchInput.text))
+        // {
+        //     ClearSearchInput();
+        // }
     }
     
     string GetCategoryPreview(string category)
@@ -233,22 +283,22 @@ public class StoreItem : MonoBehaviour
         mockStores = new List<StoreData>
         {
             // FLOOR 1
-            new StoreData{ storeName="NovaTech Hub", category="Electronics", tagline="Next-gen gadgets", floor=1, logo=GetLogo(0) },
-            new StoreData{ storeName="Aura Fashion", category="Fashion", tagline="Style that moves", floor=1, logo=GetLogo(1) },
-            new StoreData{ storeName="GlowUp Beauty", category="Makeup", tagline="Feel good", floor=1, logo=GetLogo(2) },
-            new StoreData{ storeName="FitZone Pro", category="Sports", tagline="Train smarter", floor=1, logo=GetLogo(3) },
+            new StoreData{ storeName="NovaTech Hub", category="Electronics", tagline="Next-gen gadgets", floor=1, logo=GetLogo(0), products = categoryProducts["Electronics"] },
+            new StoreData{ storeName="Aura Fashion", category="Fashion", tagline="Style that moves", floor=1, logo=GetLogo(1), products = categoryProducts["Fashion"] },
+            new StoreData{ storeName="GlowUp Beauty", category="Makeup", tagline="Feel good", floor=1, logo=GetLogo(2), products = categoryProducts["Makeup"] },
+            new StoreData{ storeName="FitZone Pro", category="Sports", tagline="Train smarter", floor=1, logo=GetLogo(3), products = categoryProducts["Sports"] },
 
             // FLOOR 2
-            new StoreData{ storeName="PixelPlay", category="Electronics", tagline="Level up gaming", floor=2, logo=GetLogo(0) },
-            new StoreData{ storeName="HomeScape", category="Home Decor", tagline="Perfect space", floor=2, logo=GetLogo(1) },
-            new StoreData{ storeName="Elegance Gems", category="Jewelry", tagline="Shine bright", floor=2, logo=GetLogo(2) },
-            new StoreData{ storeName="Urban Wear", category="Fashion", tagline="Street style", floor=2, logo=GetLogo(3) },
+            new StoreData{ storeName="PixelPlay", category="Electronics", tagline="Level up gaming", floor=2, logo=GetLogo(0), products = categoryProducts["Electronics"] },
+            new StoreData{ storeName="HomeScape", category="Home Decor", tagline="Perfect space", floor=2, logo=GetLogo(1), products = categoryProducts["Home Decor"] },
+            new StoreData{ storeName="Elegance Gems", category="Jewelry", tagline="Shine bright", floor=2, logo=GetLogo(2), products = categoryProducts["Jewelry"] },
+            new StoreData{ storeName="Urban Wear", category="Fashion", tagline="Street style", floor=2, logo=GetLogo(3), products = categoryProducts["Fashion"] },
 
             // FLOOR 3
-            new StoreData{ storeName="SoundWave", category="Electronics", tagline="Hear every detail", floor=3, logo=GetLogo(0) },
-            new StoreData{ storeName="DecoDream", category="Home Decor", tagline="Design your vibe", floor=3, logo=GetLogo(1) },
-            new StoreData{ storeName="GoldNest", category="Jewelry", tagline="Luxury pieces", floor=3, logo=GetLogo(2) },
-            new StoreData{ storeName="ActiveLife", category="Sports", tagline="Stay active", floor=3, logo=GetLogo(3) }
+            new StoreData{ storeName="SoundWave", category="Electronics", tagline="Hear every detail", floor=3, logo=GetLogo(0), products = categoryProducts["Electronics"] },
+            new StoreData{ storeName="DecoDream", category="Home Decor", tagline="Design your vibe", floor=3, logo=GetLogo(1), products = categoryProducts["Home Decor"] },
+            new StoreData{ storeName="GoldNest", category="Jewelry", tagline="Luxury pieces", floor=3, logo=GetLogo(2), products = categoryProducts["Jewelry"] },
+            new StoreData{ storeName="ActiveLife", category="Sports", tagline="Stay active", floor=3, logo=GetLogo(3), products = categoryProducts["Sports"] }
         };
     }
     
@@ -285,6 +335,12 @@ public class StoreItem : MonoBehaviour
             SpawnStoresByFloor(selectedFloorValue); // floor 1 = index 1, etc.
             currentState = AppState.FloorView;
         }
+        
+        // Clear search input when changing view
+        // if (searchInput != null)
+        // {
+        //     ClearSearchInput();
+        // }
     }
 
     void SetText(GameObject card, string path, string text)
@@ -307,13 +363,15 @@ public class StoreItem : MonoBehaviour
         Debug.Log($"Clicked store: {store.storeName} (Category: {store.category}, Floor: {store.floor})");
         // Here you can add code to show a details panel, load a scene, etc.
     }
+    
     public void OnBackButtonClicked()
     {
         switch (currentState)
         {
+            case AppState.SearchResults:
             case AppState.CategoryStores:
             case AppState.FloorView:
-                // If we are inside a category or floor view, go back to categories
+                // If we are in search results, category stores, or floor view, go back to categories
                 ShowCategories();
                 break;
 
@@ -324,5 +382,111 @@ public class StoreItem : MonoBehaviour
                 UnityEngine.SceneManagement.SceneManager.LoadScene("WelcomeScene");
                 break;
         }
+    }
+    
+    // Search function ------------------------------
+    public void OnSearchInputChanged(string query)
+    {
+        // Optional: Live search as user types
+        // Uncomment this for real-time search
+        // OnSearchChanged(query);
+        
+        // Or just show clear button when there's text
+        // if (clearSearchButton != null)
+        // {
+        //     clearSearchButton.gameObject.SetActive(!string.IsNullOrEmpty(query));
+        // }
+    }
+    
+    public void OnSearchChanged(string query)
+    {
+        query = query.ToLower().Trim();
+        lastSearchQuery = query;
+
+        // Clear current store cards
+        ClearStores();
+
+        if (string.IsNullOrEmpty(query))
+        {
+            // Empty search → show current floor or categories
+            if (floorDropdown.value == 0)
+                ShowCategories();
+            else
+                SpawnStoresByFloor(floorDropdown.value);
+            return;
+        }
+
+        // Filter stores by name or product match
+        List<StoreData> matchingStores = mockStores
+            .Where(store =>
+                store.storeName.ToLower().Contains(query) ||
+                (store.products != null && store.products.Any(p => p.ToLower().Contains(query)))
+            ).ToList();
+
+        // Show search results UI
+        scrollViewCategory.SetActive(false);
+        scrollViewStores.SetActive(true);
+        
+        // Clear categories panel if it's visible
+        for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+            Destroy(contentCategoryParent.GetChild(i).gameObject);
+
+        // Create store cards for matching stores
+        foreach (var store in matchingStores)
+        {
+            CreateStoreCard(store);
+        }
+        
+        // Show message if no results found
+        if (matchingStores.Count == 0)
+        {
+            ShowNoResultsMessage(query);
+        }
+        
+        currentState = AppState.SearchResults;
+        Debug.Log($"Search completed: Found {matchingStores.Count} stores matching '{query}'");
+    }
+    
+    public void OnSearchButtonClicked()
+    {
+        if (searchInput != null)
+        {
+            OnSearchChanged(searchInput.text);
+        }
+    }
+    
+    // void ClearSearchInput()
+    // {
+    //     if (searchInput != null)
+    //     {
+    //         searchInput.text = "";
+    //         OnSearchChanged(""); // Reset to default view
+    //     }
+    // }
+    
+    public void ClearSearch()
+    {
+        // ClearSearchInput();
+        
+        // Reset to categories view
+        ShowCategories();
+    }
+    
+    void ShowNoResultsMessage(string query)
+    {
+        // Optional: Create a "No results" message card
+        GameObject noResultsCard = new GameObject("NoResultsMessage");
+        noResultsCard.transform.SetParent(contentParent, false);
+        
+        TextMeshProUGUI messageText = noResultsCard.AddComponent<TextMeshProUGUI>();
+        messageText.text = $"No stores found matching '{query}'\nTry searching for different products or store names.";
+        messageText.alignment = TextAlignmentOptions.Center;
+        messageText.fontSize = 18;
+        messageText.color = Color.gray;
+        
+        // Add a Layout Element to control size
+        LayoutElement layoutElement = noResultsCard.AddComponent<LayoutElement>();
+        layoutElement.minHeight = 100;
+        layoutElement.minWidth = 300;
     }
 }
