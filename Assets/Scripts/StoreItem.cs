@@ -24,7 +24,7 @@ public class StoreItem : MonoBehaviour
         Categories,
         FloorView,
         CategoryStores,
-        SearchResults // Add new state for search results
+        SearchResults 
     }
 
     AppState currentState;
@@ -39,7 +39,7 @@ public class StoreItem : MonoBehaviour
     [Header("Search UI")]
     public TMP_InputField searchInput;
     public Button searchButton; // Add reference to search button
-    // public Button clearSearchButton; // Optional: add clear button
+    public Button clearSearchButton; // Optional: add clear button
 
     [Header("Category Prefab")]
     public GameObject categoryPrefab;     // prefab for each category
@@ -83,18 +83,11 @@ public class StoreItem : MonoBehaviour
             Debug.LogWarning("Search Button not assigned in inspector!");
         }
         
-        // Optional: Setup clear search button
-        // if (clearSearchButton != null)
-        // {
-        //     clearSearchButton.onClick.RemoveAllListeners();
-        //     clearSearchButton.onClick.AddListener(ClearSearch);
-        // }
-        
+
         // Setup search input to listen for Enter key
         if (searchInput != null)
         {
             searchInput.onSubmit.AddListener((value) => OnSearchButtonClicked());
-            searchInput.onValueChanged.AddListener(OnSearchInputChanged); // Optional: live search
         }
         
         // Default: show categories
@@ -156,11 +149,6 @@ public class StoreItem : MonoBehaviour
         scrollViewStores.SetActive(false); // hide stores
         currentState = AppState.Categories;
         
-        // Clear search input if needed
-        // if (searchInput != null && !string.IsNullOrEmpty(searchInput.text))
-        // {
-        //     ClearSearchInput();
-        // }
     }
     
     string GetCategoryPreview(string category)
@@ -336,11 +324,7 @@ public class StoreItem : MonoBehaviour
             currentState = AppState.FloorView;
         }
         
-        // Clear search input when changing view
-        // if (searchInput != null)
-        // {
-        //     ClearSearchInput();
-        // }
+        
     }
 
     void SetText(GameObject card, string path, string text)
@@ -385,19 +369,6 @@ public class StoreItem : MonoBehaviour
     }
     
     // Search function ------------------------------
-    public void OnSearchInputChanged(string query)
-    {
-        // Optional: Live search as user types
-        // Uncomment this for real-time search
-        // OnSearchChanged(query);
-        
-        // Or just show clear button when there's text
-        // if (clearSearchButton != null)
-        // {
-        //     clearSearchButton.gameObject.SetActive(!string.IsNullOrEmpty(query));
-        // }
-    }
-    
     public void OnSearchChanged(string query)
     {
         query = query.ToLower().Trim();
@@ -455,22 +426,6 @@ public class StoreItem : MonoBehaviour
         }
     }
     
-    // void ClearSearchInput()
-    // {
-    //     if (searchInput != null)
-    //     {
-    //         searchInput.text = "";
-    //         OnSearchChanged(""); // Reset to default view
-    //     }
-    // }
-    
-    public void ClearSearch()
-    {
-        // ClearSearchInput();
-        
-        // Reset to categories view
-        ShowCategories();
-    }
     
     void ShowNoResultsMessage(string query)
     {
@@ -488,5 +443,14 @@ public class StoreItem : MonoBehaviour
         LayoutElement layoutElement = noResultsCard.AddComponent<LayoutElement>();
         layoutElement.minHeight = 100;
         layoutElement.minWidth = 300;
+    }
+    public void ClearSearchInput()
+    {
+        if (searchInput != null)
+        {
+            searchInput.text = "";            // Clear the input field
+            lastSearchQuery = "";             // Reset last search query
+            OnSearchChanged("");              // Trigger search logic with empty query
+        }
     }
 }
