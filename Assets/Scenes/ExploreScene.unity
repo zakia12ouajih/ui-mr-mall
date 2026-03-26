@@ -695,9 +695,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1712312647}
-        m_TargetAssemblyTypeName: UIManagerExplore, Assembly-CSharp
-        m_MethodName: GoToWelcome
+      - m_Target: {fileID: 1712312648}
+        m_TargetAssemblyTypeName: StoreItem, Assembly-CSharp
+        m_MethodName: OnBackButtonClicked
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -3827,6 +3827,7 @@ MonoBehaviour:
   contentParent: {fileID: 505752566}
   floorDropdown: {fileID: 2099601468}
   scrollViewStores: {fileID: 841673735}
+  goButton: {fileID: 0}
   categoryPrefab: {fileID: 5320479167142327125, guid: 6aa130a540c481a40933d11db1d633f8, type: 3}
   contentCategoryParent: {fileID: 1972698184}
   scrollViewCategory: {fileID: 1757520736}
