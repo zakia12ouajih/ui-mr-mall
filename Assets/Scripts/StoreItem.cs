@@ -56,6 +56,8 @@ public class StoreItem : MonoBehaviour
     private string currentCategory;
     private string lastSearchQuery; // Store last search query
 
+    private Dictionary<string, Sprite> iconMap;
+
     void Start()
     {
         CreateMockStores();
@@ -109,6 +111,19 @@ public class StoreItem : MonoBehaviour
         { "Fashion", new List<string> { "T-Shirt", "Jeans", "Jacket", "Sneakers", "Dress", "Hat", "Scarf", "Bag", "Sunglasses", "Belt" } },
         { "Electronics", new List<string> { "Smartphone", "Laptop", "Headphones", "Smartwatch", "Camera", "Tablet", "Speaker", "VR Headset", "Drone", "Charger" } }
     };
+
+    void Awake()
+    {
+        // Load all icons from Resources/Icons folder
+        iconMap = new Dictionary<string, Sprite>();
+        Sprite[] icons = Resources.LoadAll<Sprite>("Icons");
+
+        foreach (var icon in icons)
+        {
+            iconMap[icon.name] = icon; // filename without extension
+            Debug.Log($"Loaded icon for category: {icon.name}");
+        }
+    }
     
     void ShowCategories()
     {
@@ -123,19 +138,23 @@ public class StoreItem : MonoBehaviour
             SetText(card, "CategoryName", category);
             SetText(card, "CategoryPreview", GetCategoryPreview(category));
 
-            // IMPORTANT: Find the button properly
+            // Assign icon if it exists
+            Image iconImage = card.transform.Find("icon")?.GetComponent<Image>();
+            if (iconImage != null && iconMap.ContainsKey(category))
+            {
+                iconImage.sprite = iconMap[category];
+                iconImage.color = Color.white; // show original colors
+            }
+
+            // Button setup
             Button btn = card.GetComponentInChildren<Button>();
             if (btn == null)
-            {
-                // Try to find by name if not found in children
                 btn = card.transform.Find("viewCategory")?.GetComponent<Button>();
-            }
-            
+
             if (btn != null)
             {
-                // Capture the variable in the loop
                 string capturedCategory = category;
-                btn.onClick.RemoveAllListeners(); // Clear any existing listeners
+                btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() => ShowStoresByCategory(capturedCategory));
                 Debug.Log($"Added listener for category: {capturedCategory}");
             }
@@ -144,41 +163,67 @@ public class StoreItem : MonoBehaviour
                 Debug.LogWarning($"viewCategory button not found in category prefab for category: {category}");
             }
         }
-        
+
         scrollViewCategory.SetActive(true);
-        scrollViewStores.SetActive(false); // hide stores
+        scrollViewStores.SetActive(false);
         currentState = AppState.Categories;
-        
     }
-    
+
     string GetCategoryPreview(string category)
     {
         List<string> names = new List<string>();
-
         foreach (var store in mockStores)
-        {
-            if (store.category == category)
-                names.Add(store.storeName);
-        }
+            if (store.category == category) names.Add(store.storeName);
 
         if (names.Count == 0) return "";
 
-        // Case 1: only 1 store
-        if (names.Count == 1)
-            return names[0];
+        if (names.Count == 1) return names[0];
 
-        // Case 2: 2 or more stores
         string line1 = names[0];
         string line2 = names[1];
-
-        if (names.Count > 2)
-        {
-            int remaining = names.Count - 2;
-            line2 += " +" + remaining;
-        }
-
+        if (names.Count > 2) line2 += " +" + (names.Count - 2);
         return line1 + "\n" + line2;
     }
+
+    // void SetText(GameObject parent, string childName, string text)
+    // {
+    //     Text t = parent.transform.Find(childName)?.GetComponent<Text>();
+    //     if (t != null) t.text = text;
+    // }
+
+    // void ShowStoresByCategory(string category)
+    // {
+    //     // your existing code to show stores
+    // }
+
+    // string GetCategoryPreview(string category)
+    // {
+    //     List<string> names = new List<string>();
+
+    //     foreach (var store in mockStores)
+    //     {
+    //         if (store.category == category)
+    //             names.Add(store.storeName);
+    //     }
+
+    //     if (names.Count == 0) return "";
+
+    //     // Case 1: only 1 store
+    //     if (names.Count == 1)
+    //         return names[0];
+
+    //     // Case 2: 2 or more stores
+    //     string line1 = names[0];
+    //     string line2 = names[1];
+
+    //     if (names.Count > 2)
+    //     {
+    //         int remaining = names.Count - 2;
+    //         line2 += " +" + remaining;
+    //     }
+
+    //     return line1 + "\n" + line2;
+    // }
     
     public void ShowStoresByCategory(string category)
     {
