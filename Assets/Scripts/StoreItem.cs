@@ -44,7 +44,12 @@ public class StoreItem : MonoBehaviour
     [Header("Category Prefab")]
     public GameObject categoryPrefab;     // prefab for each category
     public Transform contentCategoryParent; 
-    public GameObject scrollViewCategory;     
+    public GameObject scrollViewCategory; 
+
+    [Header("Product Prefab")]
+    public GameObject productPrefab;  
+    public Transform contentProductParent;
+    public GameObject scrollViewProduct;
     
     [Header("Mock Logos")]
     public List<Sprite> logos;
@@ -111,6 +116,72 @@ public class StoreItem : MonoBehaviour
         { "Fashion", new List<string> { "T-Shirt", "Jeans", "Jacket", "Sneakers", "Dress", "Hat", "Scarf", "Bag", "Sunglasses", "Belt" } },
         { "Electronics", new List<string> { "Smartphone", "Laptop", "Headphones", "Smartwatch", "Camera", "Tablet", "Speaker", "VR Headset", "Drone", "Charger" } }
     };
+    void CreateMockStores()
+    {
+        mockStores = new List<StoreData>
+        {
+            // FLOOR 1
+            new StoreData{ storeName="NovaTech Hub", category="Electronics", tagline="Next-gen gadgets", floor=1, logo=GetLogo(0), products = categoryProducts["Electronics"] },
+            new StoreData{ storeName="Aura Fashion", category="Fashion", tagline="Style that moves", floor=1, logo=GetLogo(1), products = categoryProducts["Fashion"] },
+            new StoreData{ storeName="GlowUp Beauty", category="Makeup", tagline="Feel good", floor=1, logo=GetLogo(2), products = categoryProducts["Makeup"] },
+            new StoreData{ storeName="FitZone Pro", category="Sports", tagline="Train smarter", floor=1, logo=GetLogo(3), products = categoryProducts["Sports"] },
+
+            // FLOOR 2
+            new StoreData{ storeName="PixelPlay", category="Electronics", tagline="Level up gaming", floor=2, logo=GetLogo(0), products = categoryProducts["Electronics"] },
+            new StoreData{ storeName="HomeScape", category="Home Decor", tagline="Perfect space", floor=2, logo=GetLogo(1), products = categoryProducts["Home Decor"] },
+            new StoreData{ storeName="Elegance Gems", category="Jewelry", tagline="Shine bright", floor=2, logo=GetLogo(2), products = categoryProducts["Jewelry"] },
+            new StoreData{ storeName="Urban Wear", category="Fashion", tagline="Street style", floor=2, logo=GetLogo(3), products = categoryProducts["Fashion"] },
+
+            // FLOOR 3
+            new StoreData{ storeName="SoundWave", category="Electronics", tagline="Hear every detail", floor=3, logo=GetLogo(0), products = categoryProducts["Electronics"] },
+            new StoreData{ storeName="DecoDream", category="Home Decor", tagline="Design your vibe", floor=3, logo=GetLogo(1), products = categoryProducts["Home Decor"] },
+            new StoreData{ storeName="GoldNest", category="Jewelry", tagline="Luxury pieces", floor=3, logo=GetLogo(2), products = categoryProducts["Jewelry"] },
+            new StoreData{ storeName="ActiveLife", category="Sports", tagline="Stay active", floor=3, logo=GetLogo(3), products = categoryProducts["Sports"] }
+        };
+    }
+    public class ProductResult
+    {
+        public string productName;
+        public string storeName;
+        public int floor;
+        public float price;
+        public Sprite image;
+    }
+    List<ProductResult> allProducts = new List<ProductResult>();
+
+    void BuildProductList()
+    {
+        allProducts.Clear();
+
+        foreach (var store in mockStores)
+        {
+            foreach (var product in store.products)
+            {
+                allProducts.Add(new ProductResult
+                {
+                    productName = product,
+                    storeName = store.storeName,
+                    floor = store.floor
+                });
+            }
+        }
+    }
+
+    void CreateProductCard(ProductResult data)
+    {
+        GameObject go = Instantiate(productPrefab, contentParent);
+
+        TMP_Text[] texts = go.GetComponentsInChildren<TMP_Text>();
+        Image img = go.GetComponentInChildren<Image>();
+
+        // Assign texts (depends on order OR better: reference them directly)
+        texts[0].text = data.productName;
+        texts[1].text = data.storeName;
+        texts[2].text = data.price.ToString("0.00") + " $";
+
+        if (data.image != null)
+            img.sprite = data.image;
+    }
 
     void Awake()
     {
@@ -185,45 +256,6 @@ public class StoreItem : MonoBehaviour
         return line1 + "\n" + line2;
     }
 
-    // void SetText(GameObject parent, string childName, string text)
-    // {
-    //     Text t = parent.transform.Find(childName)?.GetComponent<Text>();
-    //     if (t != null) t.text = text;
-    // }
-
-    // void ShowStoresByCategory(string category)
-    // {
-    //     // your existing code to show stores
-    // }
-
-    // string GetCategoryPreview(string category)
-    // {
-    //     List<string> names = new List<string>();
-
-    //     foreach (var store in mockStores)
-    //     {
-    //         if (store.category == category)
-    //             names.Add(store.storeName);
-    //     }
-
-    //     if (names.Count == 0) return "";
-
-    //     // Case 1: only 1 store
-    //     if (names.Count == 1)
-    //         return names[0];
-
-    //     // Case 2: 2 or more stores
-    //     string line1 = names[0];
-    //     string line2 = names[1];
-
-    //     if (names.Count > 2)
-    //     {
-    //         int remaining = names.Count - 2;
-    //         line2 += " +" + remaining;
-    //     }
-
-    //     return line1 + "\n" + line2;
-    // }
     
     public void ShowStoresByCategory(string category)
     {
@@ -311,29 +343,7 @@ public class StoreItem : MonoBehaviour
         });
     }
 
-    void CreateMockStores()
-    {
-        mockStores = new List<StoreData>
-        {
-            // FLOOR 1
-            new StoreData{ storeName="NovaTech Hub", category="Electronics", tagline="Next-gen gadgets", floor=1, logo=GetLogo(0), products = categoryProducts["Electronics"] },
-            new StoreData{ storeName="Aura Fashion", category="Fashion", tagline="Style that moves", floor=1, logo=GetLogo(1), products = categoryProducts["Fashion"] },
-            new StoreData{ storeName="GlowUp Beauty", category="Makeup", tagline="Feel good", floor=1, logo=GetLogo(2), products = categoryProducts["Makeup"] },
-            new StoreData{ storeName="FitZone Pro", category="Sports", tagline="Train smarter", floor=1, logo=GetLogo(3), products = categoryProducts["Sports"] },
-
-            // FLOOR 2
-            new StoreData{ storeName="PixelPlay", category="Electronics", tagline="Level up gaming", floor=2, logo=GetLogo(0), products = categoryProducts["Electronics"] },
-            new StoreData{ storeName="HomeScape", category="Home Decor", tagline="Perfect space", floor=2, logo=GetLogo(1), products = categoryProducts["Home Decor"] },
-            new StoreData{ storeName="Elegance Gems", category="Jewelry", tagline="Shine bright", floor=2, logo=GetLogo(2), products = categoryProducts["Jewelry"] },
-            new StoreData{ storeName="Urban Wear", category="Fashion", tagline="Street style", floor=2, logo=GetLogo(3), products = categoryProducts["Fashion"] },
-
-            // FLOOR 3
-            new StoreData{ storeName="SoundWave", category="Electronics", tagline="Hear every detail", floor=3, logo=GetLogo(0), products = categoryProducts["Electronics"] },
-            new StoreData{ storeName="DecoDream", category="Home Decor", tagline="Design your vibe", floor=3, logo=GetLogo(1), products = categoryProducts["Home Decor"] },
-            new StoreData{ storeName="GoldNest", category="Jewelry", tagline="Luxury pieces", floor=3, logo=GetLogo(2), products = categoryProducts["Jewelry"] },
-            new StoreData{ storeName="ActiveLife", category="Sports", tagline="Stay active", floor=3, logo=GetLogo(3), products = categoryProducts["Sports"] }
-        };
-    }
+    
     
     Sprite GetLogo(int index)
     {
@@ -415,53 +425,63 @@ public class StoreItem : MonoBehaviour
     
     // Search function ------------------------------
     public void OnSearchChanged(string query)
+{
+    query = query.ToLower().Trim();
+    lastSearchQuery = query;
+
+    ClearStores();
+
+    if (string.IsNullOrEmpty(query))
     {
-        query = query.ToLower().Trim();
-        lastSearchQuery = query;
-
-        // Clear current store cards
-        ClearStores();
-
-        if (string.IsNullOrEmpty(query))
-        {
-            // Empty search → show current floor or categories
-            if (floorDropdown.value == 0)
-                ShowCategories();
-            else
-                SpawnStoresByFloor(floorDropdown.value);
-            return;
-        }
-
-        // Filter stores by name or product match
-        List<StoreData> matchingStores = mockStores
-            .Where(store =>
-                store.storeName.ToLower().Contains(query) ||
-                (store.products != null && store.products.Any(p => p.ToLower().Contains(query)))
-            ).ToList();
-
-        // Show search results UI
-        scrollViewCategory.SetActive(false);
-        scrollViewStores.SetActive(true);
-        
-        // Clear categories panel if it's visible
-        for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
-            Destroy(contentCategoryParent.GetChild(i).gameObject);
-
-        // Create store cards for matching stores
-        foreach (var store in matchingStores)
-        {
-            CreateStoreCard(store);
-        }
-        
-        // Show message if no results found
-        if (matchingStores.Count == 0)
-        {
-            ShowNoResultsMessage(query);
-        }
-        
-        currentState = AppState.SearchResults;
-        Debug.Log($"Search completed: Found {matchingStores.Count} stores matching '{query}'");
+        if (floorDropdown.value == 0)
+            BuildProductList();
+        else
+            SpawnStoresByFloor(floorDropdown.value);
+        return;
     }
+
+    // 🔥 NEW: product-based results
+    List<ProductResult> matchingProducts = new List<ProductResult>();
+
+    foreach (var store in mockStores)
+    {
+        if (store.products == null) continue;
+
+        foreach (var product in store.products)
+        {
+            if (product.ToLower().Contains(query))
+            {
+                matchingProducts.Add(new ProductResult
+                {
+                    productName = product,
+                    storeName = store.storeName,
+                    floor = store.floor
+                });
+            }
+        }
+    }
+
+    // UI switching
+    scrollViewCategory.SetActive(false);
+    scrollViewStores.SetActive(true);
+
+    for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+        Destroy(contentCategoryParent.GetChild(i).gameObject);
+
+    // 🔥 Display product results instead of stores
+    foreach (var item in matchingProducts)
+    {
+        CreateProductCard(item); // NEW method
+    }
+
+    if (matchingProducts.Count == 0)
+    {
+        ShowNoResultsMessage(query);
+    }
+
+    currentState = AppState.SearchResults;
+    Debug.Log($"Search completed: Found {matchingProducts.Count} product results for '{query}'");
+}
     
     public void OnSearchButtonClicked()
     {
