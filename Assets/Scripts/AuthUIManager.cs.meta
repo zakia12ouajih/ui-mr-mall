@@ -1,0 +1,20 @@
+fileFormatVersion: 2
+guid: a8ec67c6f3e51f7489bb6f0dbccb4a64
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - panelWelcome: {fileID: 8519361344310195469, guid: 8db3602dc7dd7fb46adc3c3b17c58cb0, type: 3}
+  - panelLogin: {instanceID: 0}
+  - panelRegister: {instanceID: 0}
+  - loginEmail: {instanceID: 0}
+  - loginPassword: {instanceID: 0}
+  - regFirstName: {instanceID: 0}
+  - regLastName: {instanceID: 0}
+  - regEmail: {instanceID: 0}
+  - regPassword: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

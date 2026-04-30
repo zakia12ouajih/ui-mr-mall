@@ -1,0 +1,601 @@
+using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+using UnityEngine.UI;
+using System.Linq;
+
+
+
+[System.Serializable]
+public class ProductDTO
+{
+    public string id;
+    public string title;
+    public float price;
+    public string description;
+
+    public StoreDTO store;
+    public CategoryDTO category;
+}
+
+[System.Serializable]
+public class CategoryDTO
+{
+    public string id;
+    public string name;
+    public string imageUrl;
+}
+
+[System.Serializable]
+public class StoreDTO
+{
+    public string id;
+    public string name;
+    public string description;
+}
+
+public class StoreItem : MonoBehaviour
+{
+    // app state for "back" btn
+    enum AppState
+    {
+        Welcome,
+        Categories,
+        FloorView,
+        CategoryStores,
+        SearchResults 
+    }
+
+    AppState currentState;
+
+    [Header("UI References")]
+    public GameObject cardPrefabStore;
+    public Transform contentParent;
+    public TMP_Dropdown floorDropdown;
+    public GameObject scrollViewStores;
+    public Button goButton; // Reference to Go button
+    
+    [Header("Search UI")]
+    public TMP_InputField searchInput;
+    public Button searchButton; // Add reference to search button
+    public Button clearSearchButton; // Optional: add clear button
+
+    [Header("Category Prefab")]
+    public GameObject categoryPrefab;     // prefab for each category
+    public Transform contentCategoryParent; 
+    public GameObject scrollViewCategory; 
+
+    [Header("Product Prefab")]
+    public GameObject productPrefab;  
+    public Transform contentProductParent;
+    public GameObject scrollViewProduct;
+    
+    [Header("Mock Logos")]
+    public List<Sprite> logos;
+
+    private int selectedFloorValue; // Store the currently selected dropdown value
+    
+    // Store currently selected category to maintain state
+    private string currentCategory;
+    private string lastSearchQuery; // Store last search query
+
+    private Dictionary<string, Sprite> iconMap;
+
+    void Start()
+    {
+        
+        SetupDropdown();
+        SetupUI();
+
+        StartCoroutine(InitApp());
+        
+        // Setup Go button
+        // if (goButton != null)
+        // {
+        //     goButton.onClick.RemoveAllListeners();
+        //     goButton.onClick.AddListener(OnGoButtonClicked);
+        // }
+        // else
+        // {
+        //     Debug.LogWarning("Go Button not assigned in inspector!");
+        // }
+        
+        // Setup Search button
+        // if (searchButton != null)
+        // {
+        //     searchButton.onClick.RemoveAllListeners();
+        //     searchButton.onClick.AddListener(OnSearchButtonClicked);
+        // }
+        // else
+        // {
+        //     Debug.LogWarning("Search Button not assigned in inspector!");
+        // }
+        
+
+        // // Setup search input to listen for Enter key
+        // if (searchInput != null)
+        // {
+        //     searchInput.onSubmit.AddListener((value) => OnSearchButtonClicked());
+        // }
+        
+        // Default: show categories
+    }
+    IEnumerator InitApp()
+    {
+        yield return StartCoroutine(LoadCategories());
+        yield return StartCoroutine(LoadStores());
+        yield return StartCoroutine(LoadProducts());
+
+        // later:
+        // yield return StartCoroutine(LoadCart());
+        // yield return StartCoroutine(LoadWishlist());
+
+        ShowCategories(); // NOW it works
+    }
+
+    void SetupUI()
+    {
+        if (goButton != null)
+        {
+            goButton.onClick.RemoveAllListeners();
+            goButton.onClick.AddListener(OnGoButtonClicked);
+        }
+
+        if (searchButton != null)
+        {
+            searchButton.onClick.RemoveAllListeners();
+            searchButton.onClick.AddListener(OnSearchButtonClicked);
+        }
+
+        if (searchInput != null)
+        {
+            searchInput.onSubmit.AddListener((value) => OnSearchButtonClicked());
+        }
+    }
+    
+    // products 
+    IEnumerator LoadProducts()
+    {
+        yield return StartCoroutine(ApiManager.Instance.Get("/products",
+            (response) =>
+            {
+                ProductDTO[] data = JsonHelper.FromJson<ProductDTO>(response);
+
+                productsData = data.ToList();
+
+                Debug.Log($"Loaded {productsData.Count} products");
+            },
+            (error) => Debug.LogError(error)
+        ));
+    }
+
+    public static class JsonHelper
+    {
+        public static T[] FromJson<T>(string json)
+        {
+            string newJson = "{ \"array\": " + json + "}";
+            Wrapper<T> wrapper = JsonUtility.FromJson<Wrapper<T>>(newJson);
+            return wrapper.array;
+        }
+
+        [System.Serializable]
+        private class Wrapper<T>
+        {
+            public T[] array;
+        }
+    }
+    // categories
+    List<CategoryDTO> categoriesData = new List<CategoryDTO>();
+
+    IEnumerator LoadCategories()
+    {
+        yield return StartCoroutine(ApiManager.Instance.Get("/categories",
+            (response) =>
+            {
+                CategoryDTO[] data = JsonHelper.FromJson<CategoryDTO>(response);
+
+                categoriesData = data.ToList();
+
+                // 🔥 IMPORTANT: update your existing categories list
+                categories = categoriesData.Select(c => c.name).ToList();
+
+                Debug.Log($"Loaded {categories.Count} categories");
+            },
+            (error) => Debug.LogError(error)
+        ));
+    }
+    
+    // stores
+    IEnumerator LoadStores()
+    {
+        yield return StartCoroutine(ApiManager.Instance.Get("/stores",
+            (response) =>
+            {
+                StoreDTO[] data = JsonHelper.FromJson<StoreDTO>(response);
+
+                // Replace mockStores
+                mockStores = data.Select(s => new StoreData
+                {
+                    storeName = s.name,
+                    tagline = s.description,
+                    category = "Unknown", // map later if needed
+                    floor = 1
+                }).ToList();
+
+                Debug.Log($"Loaded {mockStores.Count} stores");
+            },
+            (error) => Debug.LogError(error)
+        ));
+    }
+
+    List<ProductDTO> productsData = new List<ProductDTO>();
+    
+
+    
+
+    void CreateProductCard(ProductResult data)
+    {
+        GameObject go = Instantiate(productPrefab, contentParent);
+
+        TMP_Text[] texts = go.GetComponentsInChildren<TMP_Text>();
+        Image img = go.GetComponentInChildren<Image>();
+
+        // Assign texts (depends on order OR better: reference them directly)
+        texts[0].text = data.productName;
+        texts[1].text = data.storeName;
+        texts[2].text = data.price.ToString("0.00") + " $";
+
+        if (data.image != null)
+            img.sprite = data.image;
+    }
+
+    void Awake()
+    {
+        // Load all icons from Resources/Icons folder
+        iconMap = new Dictionary<string, Sprite>();
+        Sprite[] icons = Resources.LoadAll<Sprite>("Icons");
+
+        foreach (var icon in icons)
+        {
+            iconMap[icon.name] = icon; // filename without extension
+            Debug.Log($"Loaded icon for category: {icon.name}");
+        }
+    }
+    
+    void ShowCategories()
+    {
+        
+        for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+            Destroy(contentCategoryParent.GetChild(i).gameObject);
+
+        foreach (var category in categories)
+        {
+            GameObject card = Instantiate(categoryPrefab, contentCategoryParent);
+
+            SetText(card, "CategoryName", category);
+            SetText(card, "CategoryPreview", GetCategoryPreview(category));
+
+            // Assign icon if it exists
+            Image iconImage = card.transform.Find("icon")?.GetComponent<Image>();
+            if (iconImage != null && iconMap.ContainsKey(category))
+            {
+                iconImage.sprite = iconMap[category];
+                iconImage.color = Color.white; // show original colors
+            }
+
+            // Button setup
+            Button btn = card.GetComponentInChildren<Button>();
+            if (btn == null)
+                btn = card.transform.Find("viewCategory")?.GetComponent<Button>();
+
+            if (btn != null)
+            {
+                string capturedCategory = category;
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => ShowStoresByCategory(capturedCategory));
+                Debug.Log($"Added listener for category: {capturedCategory}");
+            }
+            else
+            {
+                Debug.LogWarning($"viewCategory button not found in category prefab for category: {category}");
+            }
+        }
+
+        scrollViewCategory.SetActive(true);
+        scrollViewStores.SetActive(false);
+        currentState = AppState.Categories;
+    }
+    // fixed
+    string GetCategoryPreview(string category)
+    {
+        var products = productsData
+            .Where(p => p.category != null && p.category.name == category)
+            .Take(2)
+            .Select(p => p.title)
+            .ToList();
+
+        if (products.Count == 0) return "";
+
+        if (products.Count == 1) return products[0];
+
+        return products[0] + "\n" + products[1];
+    }
+
+    
+    // public void ShowStoresByCategory(string category)
+    // {
+    //     currentCategory = category;
+        
+    //     // Clear categories panel
+    //     for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+    //         Destroy(contentCategoryParent.GetChild(i).gameObject);
+
+    //     scrollViewCategory.SetActive(false);
+    //     scrollViewStores.SetActive(true);
+
+    //     // Clear and spawn stores of selected category
+    //     ClearStores();
+    //     SpawnStoresByCategory(category);
+    //     currentState = AppState.CategoryStores;
+    // }
+    
+    // fixed
+    void ShowStoresByCategory(string category)
+    {
+        ClearStores();
+
+        var stores = productsData
+            .Where(p => p.category != null && p.category.name == category)
+            .Select(p => p.store)
+            .Where(s => s != null)
+            .GroupBy(s => s.id)
+            .Select(g => g.First())
+            .ToList();
+
+        foreach (var store in stores)
+        {
+            CreateStoreCard(new StoreData
+            {
+                storeName = store.name,
+                category = category,
+                tagline = "",
+                floor = 1
+            });
+        }
+
+        scrollViewCategory.SetActive(false);
+        scrollViewStores.SetActive(true);
+    }
+    
+    void SpawnStoresByFloor(int floor)
+    {
+        
+        foreach (var store in mockStores)
+        {
+            if (store.floor != floor) continue;
+            CreateStoreCard(store);
+        }
+    }
+    
+    void CreateStoreCard(StoreData store)
+    {
+        GameObject card = Instantiate(cardPrefabStore, contentParent);
+        
+        SetText(card, "verticalText/StoreName", store.storeName);
+        SetText(card, "verticalText/CategoryBadge", store.category);
+        SetText(card, "verticalText/Tagline", store.tagline);
+
+        if (store.logo != null)
+        {
+            Image logoImage = card.transform.Find("Logo")?.GetComponent<Image>();
+            if (logoImage != null) logoImage.sprite = store.logo;
+        }
+        
+        // Capture store for button click
+        Button btn = card.GetComponent<Button>();
+        if (btn != null)
+        {
+            StoreData capturedStore = store;
+            btn.onClick.RemoveAllListeners(); // Clear any existing listeners
+        }
+        else
+        {
+            Debug.LogWarning($"Button component not found on store card for: {store.storeName}");
+        }
+    }
+    
+    void ClearStores()
+    {
+        for (int i = contentParent.childCount - 1; i >= 0; i--)
+            Destroy(contentParent.GetChild(i).gameObject);
+    }
+
+    void SetupDropdown()
+    {
+        floorDropdown.ClearOptions();
+        List<string> options = new List<string> { "Show Categories", "Floor 1", "Floor 2", "Floor 3" };
+        floorDropdown.AddOptions(options);
+        
+        // Just store the initial value
+        selectedFloorValue = floorDropdown.value;
+        
+        // Optional: Add visual feedback when dropdown changes without triggering action
+        floorDropdown.onValueChanged.AddListener((value) => {
+            selectedFloorValue = value;
+            Debug.Log($"Dropdown selection changed to: {options[value]} - Click Go to apply");
+        });
+    }
+
+    
+    
+    Sprite GetLogo(int index)
+    {
+        if (logos != null && index < logos.Count)
+            return logos[index];
+        return null;
+    }
+
+    public void OnGoButtonClicked()
+    {
+        // This is triggered by the Go button
+        Debug.Log($"Go button clicked! Selected dropdown value: {selectedFloorValue}");
+        
+        // Process the current dropdown selection
+        if (selectedFloorValue == 0)
+        {
+            // Show categories
+            ShowCategories();
+        }
+        else
+        {
+            // Show stores for selected floor
+            // Clear categories when showing a floor
+            for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+                Destroy(contentCategoryParent.GetChild(i).gameObject);
+            
+            scrollViewCategory.SetActive(false);
+            scrollViewStores.SetActive(true);
+            
+            // Clear and spawn stores for selected floor
+            ClearStores();
+            SpawnStoresByFloor(selectedFloorValue); // floor 1 = index 1, etc.
+            currentState = AppState.FloorView;
+        }
+        
+        
+    }
+
+    void SetText(GameObject card, string path, string text)
+    {
+        Transform target = card.transform.Find(path);
+        if (target != null)
+        {
+            TextMeshProUGUI tmp = target.GetComponent<TextMeshProUGUI>();
+            if (tmp != null) tmp.text = text;
+            else Debug.LogWarning($"TextMeshProUGUI component not found at path: {path}");
+        }
+        else
+        {
+            Debug.LogWarning($"Transform not found at path: {path}");
+        }
+    }
+    
+
+    
+    public void OnBackButtonClicked()
+    {
+        switch (currentState)
+        {
+            case AppState.SearchResults:
+            case AppState.CategoryStores:
+            case AppState.FloorView:
+                // If we are in search results, category stores, or floor view, go back to categories
+                ShowCategories();
+                break;
+
+            case AppState.Categories:
+            case AppState.Welcome:
+            default:
+                // If we are already on categories or at root, go back to welcome scene
+                UnityEngine.SceneManagement.SceneManager.LoadScene("WelcomeScene");
+                break;
+        }
+    }
+    
+    // // Search function ------------------------------
+    // public void OnSearchChanged(string query)
+    // {
+        
+    // query = query.ToLower().Trim();
+    // lastSearchQuery = query;
+
+    // ClearStores();
+
+    // if (string.IsNullOrEmpty(query))
+    // {
+    //     if (floorDropdown.value == 0)
+    //         BuildProductList();
+    //     else
+    //         SpawnStoresByFloor(floorDropdown.value);
+    //     return;
+    // }
+
+    // // 🔥 NEW: product-based results
+    // List<ProductResult> matchingProducts = new List<ProductResult>();
+
+    // foreach (var store in mockStores)
+    // {
+    //     if (store.products == null) continue;
+
+    //     foreach (var product in store.products)
+    //     {
+    //         if (product.ToLower().Contains(query))
+    //         {
+    //             matchingProducts.Add(new ProductResult
+    //             {
+    //                 productName = product,
+    //                 storeName = store.storeName,
+    //                 floor = store.floor
+    //             });
+    //         }
+    //     }
+    // }
+
+    // // UI switching
+    // scrollViewCategory.SetActive(false);
+    // scrollViewStores.SetActive(true);
+
+    // for (int i = contentCategoryParent.childCount - 1; i >= 0; i--)
+    //     Destroy(contentCategoryParent.GetChild(i).gameObject);
+
+    // //  Display product results instead of stores
+    // foreach (var item in matchingProducts)
+    // {
+    //     CreateProductCard(item); // NEW method
+    // }
+
+    // if (matchingProducts.Count == 0)
+    // {
+    //     ShowNoResultsMessage(query);
+    // }
+
+    // currentState = AppState.SearchResults;
+    // Debug.Log($"Search completed: Found {matchingProducts.Count} product results for '{query}'");
+    // }
+    
+    // public void OnSearchButtonClicked()
+    // {
+    //     if (searchInput != null)
+    //     {
+    //         OnSearchChanged(searchInput.text);
+    //     }
+    // }
+    
+    
+    void ShowNoResultsMessage(string query)
+    {
+        // Optional: Create a "No results" message card
+        GameObject noResultsCard = new GameObject("NoResultsMessage");
+        noResultsCard.transform.SetParent(contentParent, false);
+        
+        TextMeshProUGUI messageText = noResultsCard.AddComponent<TextMeshProUGUI>();
+        messageText.text = $"No stores found matching '{query}'\nTry searching for different products or store names.";
+        messageText.alignment = TextAlignmentOptions.Center;
+        messageText.fontSize = 18;
+        messageText.color = Color.gray;
+        
+        // Add a Layout Element to control size
+        LayoutElement layoutElement = noResultsCard.AddComponent<LayoutElement>();
+        layoutElement.minHeight = 100;
+        layoutElement.minWidth = 300;
+    }
+    public void ClearSearchInput()
+    {
+        if (searchInput != null)
+        {
+            searchInput.text = "";            // Clear the input field
+            lastSearchQuery = "";             // Reset last search query
+            OnSearchChanged("");              // Trigger search logic with empty query
+        }
+    }
+}
