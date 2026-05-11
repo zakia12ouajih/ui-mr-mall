@@ -5,6 +5,9 @@ using UnityEngine.UI;
 using System.Linq;
 using System.Collections;
 
+
+
+
 [System.Serializable]
 public class ProductMediaDTO
 {
@@ -51,6 +54,75 @@ public class StoreDTO
     public string description;
 }
 
+[System.Serializable]
+public class CartItem
+{
+    public string id;        // cart item id (like your web version)
+    public string productId;
+    public string name;
+    public float price;
+    public int quantity;
+}
+[System.Serializable]
+public class WishlistItemDTO
+{
+    public string id;
+    public string productId;
+    public ProductDTO product;
+}
+
+[System.Serializable]
+public class WishlistDTO
+{
+    public string id;
+    public string name;
+    public List<WishlistItemDTO> wishlistItems;
+}
+
+[System.Serializable]
+public class CartResponseWrapper
+{
+    public List<CartItem> cartItems;
+}
+
+public static class AuthManager
+{
+    public static void Logout()
+    {
+        PlayerPrefs.DeleteKey("gb_token");
+        PlayerPrefs.DeleteKey("gb_user_id");
+        PlayerPrefs.DeleteKey("gb_first_name");
+        PlayerPrefs.DeleteKey("gb_last_name");
+        PlayerPrefs.Save();
+    }
+
+    public static string GetFirstName() =>
+        PlayerPrefs.GetString("gb_first_name", "");
+
+    public static string GetLastName() =>
+        PlayerPrefs.GetString("gb_last_name", "");
+
+    public static string GetFullName() =>
+        (GetFirstName() + " " + GetLastName()).Trim();
+
+    public static bool IsLoggedIn()
+    {
+        return PlayerPrefs.HasKey("gb_token") && !string.IsNullOrEmpty(PlayerPrefs.GetString("gb_token"));
+    }
+
+    public static string GetUserId()
+    {
+        return PlayerPrefs.GetString("gb_user_id", "");
+    }
+
+    public static string GetToken()
+    {
+        return PlayerPrefs.GetString("gb_token", "");
+    }
+}
+
+
+
 public class StoreItem : MonoBehaviour
 {
     // app state for "back" btn
@@ -90,6 +162,26 @@ public class StoreItem : MonoBehaviour
     [Header("Mock Logos")]
     public List<Sprite> logos;
 
+    public TMP_Text cartCountText;
+    public TMP_Text wishlistCountText;
+
+    public GameObject cartButton;
+    public GameObject wishlistButton;
+    public GameObject cartPanel;
+    public GameObject wishlistPanel;
+    public GameObject logoutButton;
+
+    [Header("Wishlist UI")]
+    public Transform wishlistContentParent;
+
+    [Header("Cart UI")]
+    public Transform cartContentParent;
+
+    [Header("Auth UI")]
+    public GameObject guestPanel;   // "Please login" UI
+    public GameObject userPanel;    // shows username (optional)
+    public TMP_Text usernameText;   // optional
+
     private int selectedFloorValue; // Store the currently selected dropdown value
     
     // Store currently selected category to maintain state
@@ -108,15 +200,89 @@ public class StoreItem : MonoBehaviour
     }
     IEnumerator InitApp()
     {
+        // 1. Apply auth UI IMMEDIATELY
+        ApplyAuthUI();
+
+        // 2. Load core app data (independent of auth)
         yield return StartCoroutine(LoadCategories());
         yield return StartCoroutine(LoadStores());
         yield return StartCoroutine(LoadProducts());
 
-        // later:
-        // yield return StartCoroutine(LoadCart());
-        // yield return StartCoroutine(LoadWishlist());
+        // 3. Show base UI early (faster feel)
+        ShowCategories();
 
-        ShowCategories(); 
+        // 4. Load user-specific data (only if logged in)
+        if (AuthManager.IsLoggedIn())
+        {
+            yield return StartCoroutine(LoadCart());
+            yield return StartCoroutine(LoadWishlist());
+        }
+    }
+
+    void ApplyAuthUI()
+    {
+        bool loggedIn = AuthManager.IsLoggedIn();
+        Debug.Log("logged in ?: " + loggedIn);
+
+        cartButton.SetActive(loggedIn);
+        wishlistButton.SetActive(loggedIn);
+        logoutButton.SetActive(loggedIn);
+
+        if (guestPanel != null)
+            guestPanel.SetActive(!loggedIn);
+
+        if (userPanel != null)
+            userPanel.SetActive(loggedIn); 
+
+        if (loggedIn && usernameText != null)
+        {
+            string firstName = AuthManager.GetFirstName();
+            usernameText.text = "Welcome, " + firstName;
+        }
+        else if (usernameText != null)
+        {
+            usernameText.text = "";
+        }
+    }
+
+    public void OnLogoutClicked()
+    {
+        AuthManager.Logout();
+
+        cartItems.Clear();
+        wishlistItems.Clear();
+
+        UpdateUI();
+        RenderCartItems();
+        RenderWishlistItems();
+
+        ApplyAuthUI();
+    }
+
+    public void GoToLogin()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene("WelcomeScene");
+    }
+
+    public void OnCartClicked(ProductDTO product)
+    {
+        if (!AuthManager.IsLoggedIn())
+        {
+            Debug.Log("User not logged in");
+            return;
+        }
+
+        ToggleWishlist(product);
+    }
+    public void OnWishlistClicked(ProductDTO product)
+    {
+        if (!AuthManager.IsLoggedIn())
+        {
+            Debug.Log("User not logged in");
+            return;
+        }
+
+        ToggleWishlist(product);
     }
 
     // void SetupUI()
@@ -178,7 +344,7 @@ public class StoreItem : MonoBehaviour
 
     IEnumerator LoadCategories()
     {
-        Debug.Log("ApiManager: " + ApiManager.Instance);
+        // Debug.Log("ApiManager: " + ApiManager.Instance);
         yield return StartCoroutine(ApiManager.Instance.Get("/categories",
             (response) =>
             {
@@ -186,7 +352,7 @@ public class StoreItem : MonoBehaviour
 
                 categoriesData = data.ToList();
 
-                Debug.Log("Categories loaded: " + categoriesData.Count);
+                // Debug.Log("Categories loaded: " + categoriesData.Count);
             },
             (error) => Debug.LogError(error)
         ));
@@ -221,7 +387,7 @@ public class StoreItem : MonoBehaviour
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() =>
                 {
-                    Debug.Log("CLICKED CATEGORY: " + capturedCategory);
+                    // Debug.Log("CLICKED CATEGORY: " + capturedCategory);
                     ShowProductsByCategory(capturedCategory);
                 });
             }
@@ -284,6 +450,8 @@ public class StoreItem : MonoBehaviour
                 btn.onClick.AddListener(() =>
                 {
                     Debug.Log("Clicked store: " + captured);
+                    EnterStore(captured);
+
                 });
             }
         }
@@ -319,7 +487,7 @@ public class StoreItem : MonoBehaviour
 
 // ====================== Product ======================================
 
-    List<ProductDTO> productsData = new List<ProductDTO>();
+    public static List<ProductDTO> productsData = new List<ProductDTO>();
     IEnumerator LoadProducts()
     {
         yield return StartCoroutine(ApiManager.Instance.Get("/products",
@@ -409,11 +577,150 @@ public class StoreItem : MonoBehaviour
                 StartCoroutine(LoadImage(fullUrl, img));
             }
         }
+        Button btn = go.transform.Find("enterStore")?.GetComponent<Button>();
+
+        if (btn != null)
+        {
+            btn.onClick.RemoveAllListeners();
+
+            string storeId = data.store.id;
+
+            btn.onClick.AddListener(() =>
+            {
+                Debug.Log("Entering store from product: " + storeId);
+                EnterStore(storeId);
+            });
+        }
     }
     
     
+    // ================= CART =================
+    List<CartItem> cartItems = new List<CartItem>();   
+    IEnumerator LoadCart()
+    {
+        yield return StartCoroutine(ApiManager.Instance.Get(
+            $"/carts/user/{AuthManager.GetUserId()}",
+            (response) =>
+            {
+                var data = JsonUtility.FromJson<CartResponseWrapper>(response);
+
+                cartItems = data.cartItems.ToList();
+
+                UpdateCartUI();
+                RenderCartItems();
+            },
+            (error) => Debug.LogError(error)
+        ));
+    }
+    void UpdateCartUI()
+    {
+        int total = cartItems.Sum(i => i.quantity);
+        cartCountText.text = total.ToString();
+    }
+    void RenderCartItems()
+    {
+        for (int i = cartContentParent.childCount - 1; i >= 0; i--)
+            Destroy(cartContentParent.GetChild(i).gameObject);
+
+        foreach (var item in cartItems)
+        {
+            GameObject go = Instantiate(productPrefab, cartContentParent);
+
+            SetText(go, "Title", item.name);
+            SetText(go, "Price", item.price.ToString("0.00"));
+            SetText(go, "Quantity", "x" + item.quantity);
+        }
+    }
+    public void AddToCart(ProductDTO product)
+    {
+        var existing = cartItems.FirstOrDefault(x => x.productId == product.id);
+
+        if (existing != null)
+        {
+            existing.quantity++;
+        }
+        else
+        {
+            cartItems.Add(new CartItem
+            {
+                id = System.Guid.NewGuid().ToString(),
+                productId = product.id,
+                name = product.title,
+                price = product.price,
+                quantity = 1
+            });
+        }
+
+        Debug.Log($"Cart updated: {cartItems.Count} items");
+    }
     
-    
+
+    // ================= WISHLIST =================
+    List<WishlistItemDTO> wishlistItems = new List<WishlistItemDTO>();  
+    IEnumerator LoadWishlist()
+    {
+        yield return StartCoroutine(ApiManager.Instance.Get(
+            $"/wishlists/user/{AuthManager.GetUserId()}",
+            (response) =>
+            {
+                var data = JsonUtility.FromJson<WishlistDTO>(response);
+
+                wishlistItems = data.wishlistItems ?? new List<WishlistItemDTO>();
+
+                UpdateWishlistUI();
+                RenderWishlistItems();
+            },
+            (error) => Debug.LogError(error)
+        ));
+    }
+    void UpdateWishlistUI()
+    {
+        wishlistCountText.text = wishlistItems.Count.ToString();
+    }
+    void RenderWishlistItems()
+    {
+        for (int i = wishlistContentParent.childCount - 1; i >= 0; i--)
+            Destroy(wishlistContentParent.GetChild(i).gameObject);
+
+        foreach (var item in wishlistItems)
+        {
+            GameObject go = Instantiate(productPrefab, wishlistContentParent);
+
+            if (item.product != null)
+            {
+                SetText(go, "Title", item.product.title);
+                SetText(go, "Price", item.product.price.ToString("0.00"));
+                SetText(go, "Description", item.product.description);
+            }
+        }
+    }
+    public void ToggleWishlist(ProductDTO product)
+    {
+        var existing = wishlistItems.FirstOrDefault(x => x.productId == product.id);
+
+        if (existing != null)
+        {
+            wishlistItems.Remove(existing);
+            Debug.Log("Removed from wishlist: " + product.title);
+        }
+        else
+        {
+            wishlistItems.Add(new WishlistItemDTO
+            {
+                productId = product.id,
+                product = product
+            });
+            Debug.Log("Added to wishlist: " + product.title);
+        }
+    }
+    void UpdateUI()
+    {
+        if (cartCountText != null)
+            cartCountText.text = cartItems.Sum(x => x.quantity).ToString();
+
+        if (wishlistCountText != null)
+            wishlistCountText.text = wishlistItems.Count.ToString();
+    }
     
     public void OnBackButtonClicked()
     {
@@ -436,7 +743,22 @@ public class StoreItem : MonoBehaviour
     }
     
     
-    
+    public void EnterStore(string storeId)
+    {
+        Debug.Log("EnterStore CLICKED");
+        if (!AuthManager.IsLoggedIn())
+        {
+            Debug.Log("User not logged in → redirecting");
+
+            UnityEngine.SceneManagement.SceneManager.LoadScene("WelcomeScene");
+            return;
+        }
+
+        PlayerPrefs.SetString("selected_store_id", storeId);
+        PlayerPrefs.Save();
+
+        UnityEngine.SceneManagement.SceneManager.LoadScene("StoreScene");
+    }
     
 
     

@@ -8,9 +8,12 @@ using System.Text;
 [System.Serializable]
 public class LoginResponse
 {
-    public string token;
     public string id;
+    public string firstName;
+    public string lastName;
+    public string email;
     public string[] roles;
+    public string token;
 }
 
 [System.Serializable]
@@ -104,7 +107,6 @@ public class AuthUIManager : MonoBehaviour
             password = password
         };
 
-
         string json = JsonUtility.ToJson(body);
 
         UnityWebRequest req = new UnityWebRequest(url, "POST");
@@ -117,10 +119,17 @@ public class AuthUIManager : MonoBehaviour
         if (req.result == UnityWebRequest.Result.Success)
         {
             var res = JsonUtility.FromJson<LoginResponse>(req.downloadHandler.text);
-
             PlayerPrefs.SetString("gb_token", res.token);
             PlayerPrefs.SetString("gb_user_id", res.id);
-            PlayerPrefs.SetString("gb_role", res.roles != null && res.roles.Length > 0 ? res.roles[0] : "");
+            PlayerPrefs.SetString("gb_first_name", res.firstName);
+            PlayerPrefs.SetString("gb_last_name", res.lastName);
+
+            PlayerPrefs.SetString("gb_role",
+                res.roles != null && res.roles.Length > 0 ? res.roles[0] : "");
+
+            Debug.Log("first name FROM API: " + res.firstName);
+            // ✅ FIXED HERE
+
             PlayerPrefs.Save();
 
             Debug.Log("Login success");
@@ -171,6 +180,19 @@ public class AuthUIManager : MonoBehaviour
             Debug.LogError("Register failed: " + req.error);
         }
     }
+
+    public static void Logout()
+    {
+        
+        PlayerPrefs.DeleteKey("gb_token");
+        PlayerPrefs.DeleteKey("gb_user_id");
+
+        PlayerPrefs.Save(); // make sure it's written
+
+        Debug.Log("User logged out");
+    }
+
+
 
     // ================= SCENE =================
     public void GoToExplore()
